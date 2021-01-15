@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <stdio.h>
+#include <regex.h>
 
 // Reading
 
@@ -32,7 +33,7 @@ char *read_line(void)
 
 #define TOK_BUFSIZE 64
 #define TOK_DELIM " \t\r\n\a"
-char **split_line(char *line)
+char **split_line(int *argc, char *line)
 {
     int bufsize = TOK_BUFSIZE, position = 0;
     char **tokens = malloc(bufsize * sizeof(char *));
@@ -47,6 +48,7 @@ char **split_line(char *line)
     token = strtok(line, TOK_DELIM);
     while (token != NULL)
     {
+        (*argc)++;
         tokens[position] = token;
         position++;
 
@@ -99,6 +101,17 @@ int launch(char **args)
     }
 
     return 1;
+}
+
+int db_launch(int argc, char **args)
+{
+    for (int i = 0; i < argc; i++)
+    {
+        args[i + 1] = args[i];
+    }
+    args[0] = "./dbxcli";
+
+    launch(args);
 }
 
 // Built-ins
@@ -223,7 +236,7 @@ int sh_exit(char **args)
 
 // Shell executor
 
-int execute(char **args)
+int execute(int argc, char **args)
 {
     int i;
 
@@ -241,6 +254,7 @@ int execute(char **args)
         }
     }
 
+    db_launch(argc, args);
     printf("dbsh: unknown command %s, run \"help\" for usage\n", args[0]);
     return -1;
 }
@@ -255,11 +269,11 @@ void loop(void)
 
     do
     {
+        int argc = 0;
         printf("> ");
         line = read_line();
-        args = split_line(line);
-        status = execute(args);
-
+        args = split_line(&argc, line);
+        status = execute(argc, args);
         free(line);
         free(args);
     } while (status);
