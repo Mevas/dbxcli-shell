@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <stdio.h>
 
 // Reading
 
@@ -119,6 +120,7 @@ int help(char **args);
 int sh_exit(char **args);
 int lmkdir(char **args);
 int lls(char **args);
+int lrm(char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
@@ -138,7 +140,8 @@ int (*builtin_func[])(char **) = {
     &help,
     &sh_exit,
     &sh_exit,
-    &lmkdir};
+    &lmkdir,
+    &lrm};
 
 int num_builtins()
 {
@@ -178,6 +181,22 @@ int lmkdir(char **args)
     else
     {
         if (mkdir(args[1], S_IRWXU) != 0)
+        {
+            perror("dbsh");
+        }
+    }
+    return 1;
+}
+
+int lrm(char **args)
+{
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "dbsh: expected directory or file name to be passed to \"lrm\"\n");
+    }
+    else
+    {
+        if (remove(args[1]) != 0)
         {
             perror("dbsh");
         }
