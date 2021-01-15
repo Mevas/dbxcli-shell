@@ -10,27 +10,62 @@
 #include <fcntl.h>
 #include <errno.h>
 
+char *path = "/";
+
+// Note: This function returns a pointer to a substring of the original string.
+// If the given string was allocated dynamically, the caller must not overwrite
+// that pointer with the returned value, since the original pointer must be
+// deallocated using the same allocator with which it was allocated.  The return
+// value must NOT be deallocated using free() etc.
+char *trimwhitespace(char *str)
+{
+    char *end;
+
+    // Trim leading space
+    while (isspace((unsigned char)*str))
+        str++;
+
+    if (*str == 0) // All spaces?
+        return str;
+
+    // Trim trailing space
+    end = str + strlen(str) - 1;
+    while (end > str && isspace((unsigned char)*end))
+        end--;
+
+    // Write new null terminator character
+    end[1] = '\0';
+
+    return str;
+}
+
 #define OFFSET_SIZE 1024
-char* exec_to_buffer(char **args, int outputOutput, int outputError) {
+char *exec_to_buffer(char **args, int outputOutput, int outputError)
+{
     int pipefd[2];
     pipe(pipefd);
     pid_t pid = fork();
 
-    if (pid < 0) {
+    if (pid < 0)
+    {
         perror("fork");
         return NULL;
     }
 
-    else if (pid == 0) {
+    else if (pid == 0)
+    {
         close(pipefd[0]);
 
-        if(outputOutput) dup2(pipefd[1], 1);
-        if(outputError) dup2(pipefd[1], 2);
+        if (outputOutput)
+            dup2(pipefd[1], 1);
+        if (outputError)
+            dup2(pipefd[1], 2);
 
         close(pipefd[1]);
         execvp(args[0], args);
     }
-    else {
+    else
+    {
         wait(NULL);
         char *buffer = malloc(OFFSET_SIZE * sizeof *buffer);
 
@@ -39,10 +74,13 @@ char* exec_to_buffer(char **args, int outputOutput, int outputError) {
         while (read(pipefd[0], buffer + offset, OFFSET_SIZE) != 0)
         {
             offset += OFFSET_SIZE;
-            char *p = realloc(buffer, (offset + OFFSET_SIZE) * sizeof * buffer);
-            if (!p) {
+            char *p = realloc(buffer, (offset + OFFSET_SIZE) * sizeof *buffer);
+            if (!p)
+            {
                 perror("Realloc issues");
-            } else {
+            }
+            else
+            {
                 buffer = p;
             }
         }
@@ -77,7 +115,7 @@ char *read_line(void)
 
 #define TOK_BUFSIZE 64
 #define TOK_DELIM " \t\r\n\a"
-char **split_line(int *argc, char *line)
+char **split_string(int *argc, char *line, char *delimiter)
 {
     (*argc) = 0;
     int bufsize = TOK_BUFSIZE, position = 0;
@@ -90,11 +128,11 @@ char **split_line(int *argc, char *line)
         exit(EXIT_FAILURE);
     }
 
-    token = strtok(line, TOK_DELIM);
+    token = strtok(line, delimiter);
     while (token != NULL)
     {
         (*argc)++;
-        tokens[position] = token;
+        tokens[position] = trimwhitespace(token);
         position++;
 
         if (position >= bufsize)
@@ -108,7 +146,7 @@ char **split_line(int *argc, char *line)
             }
         }
 
-        token = strtok(NULL, TOK_DELIM);
+        token = strtok(NULL, delimiter);
     }
     tokens[position] = NULL;
     return tokens;
@@ -179,6 +217,7 @@ int sh_exit(char **args);
 int lmkdir(char **args);
 int lls(char **args);
 int lrm(char **args);
+int cd(char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
@@ -192,7 +231,8 @@ char *builtin_str[] = {
     "exit",
     "quit",
     "lmkdir",
-    "lrm"};
+    "lrm",
+    "cd"};
 
 int (*builtin_func[])(char **) = {
     &lcd,
@@ -203,7 +243,8 @@ int (*builtin_func[])(char **) = {
     &sh_exit,
     &sh_exit,
     &lmkdir,
-    &lrm};
+    &lrm,
+    &cd};
 
 int num_builtins()
 {
@@ -213,6 +254,52 @@ int num_builtins()
 /*
   Builtin function implementations.
 */
+int cd(char **args)
+{
+    char *cd_path = path;
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "dbsh: expected path\n");
+        return 1;
+    }
+
+    char *ls_args[] = {"./dbxcli", "ls", NULL};
+    char *buffer = exec_to_buffer(ls_args, 1, 1);
+    int num_files;
+
+    char **files = split_string(&num_files, buffer, "/");
+
+    int exists = 0;
+    for (int i = 0; i < num_files; i++)
+    {
+        if (strcmp(files[i], args[1]) == 0)
+        {
+            exists = 1;
+        }
+    }
+
+    if (!exists)
+    {
+        fprintf(stderr, "dbsh: path doesn't exist\n");
+    }
+    else
+    {
+        char *p = realloc(cd_path, strlen(args[1]) * sizeof *cd_path);
+        if (!p)
+        {
+            perror("Realloc issues");
+        }
+        else
+        {
+            cd_path = p;
+        }
+        strcat(cd_path, args[1]);
+        printf("%s%s", cd_path, args[1]);
+    }
+
+    return 1;
+}
+
 int lcd(char **args)
 {
     if (args[1] == NULL)
@@ -317,14 +404,15 @@ void loop(void)
         int argc = 0;
         printf("> ");
         line = read_line();
-        args = split_line(&argc, line);
+        args = split_string(&argc, line, TOK_DELIM);
         status = execute(argc, args);
         free(line);
         free(args);
     } while (status);
 }
 
-void login() {
+void login()
+{
     char line[] = "";
     int argc;
     int status;
