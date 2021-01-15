@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 // Reading
 
@@ -103,22 +105,28 @@ int launch(char **args)
 /*
   Function Declarations for builtin shell commands:
  */
-int cd(char **args);
+int lcd(char **args);
 int help(char **args);
 int sh_exit(char **args);
+int lmkdir(char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
  */
 char *builtin_str[] = {
-    "cd",
+    "lcd",
     "help",
-    "exit"};
+    "exit",
+    "quit",
+    "lmkdir",
+    "lrm"};
 
 int (*builtin_func[])(char **) = {
-    &cd,
+    &lcd,
     &help,
-    &sh_exit};
+    &sh_exit,
+    &sh_exit,
+    &lmkdir};
 
 int num_builtins()
 {
@@ -128,15 +136,31 @@ int num_builtins()
 /*
   Builtin function implementations.
 */
-int cd(char **args)
+int lcd(char **args)
 {
     if (args[1] == NULL)
     {
-        fprintf(stderr, "dbsh: expected argument to \"cd\"\n");
+        fprintf(stderr, "dbsh: expected argument to \"lcd\"\n");
     }
     else
     {
         if (chdir(args[1]) != 0)
+        {
+            perror("dbsh");
+        }
+    }
+    return 1;
+}
+
+int lmkdir(char **args)
+{
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "dbsh: expected directory name to be passed to \"lmkdir\"\n");
+    }
+    else
+    {
+        if (mkdir(args[1], S_IRWXU) != 0)
         {
             perror("dbsh");
         }
