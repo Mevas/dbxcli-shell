@@ -10,6 +10,9 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#define FALSE 0
+#define TRUE 1
+
 #define OFFSET_SIZE 1024
 char* exec_to_buffer(char **args, int outputOutput, int outputError) {
     int pipefd[2];
@@ -325,13 +328,14 @@ void loop(void)
 }
 
 void login() {
-    char line[] = "";
     int argc;
     int status;
-
-    char *args[] = {"./dbxcli", "version", NULL};
-    char *buf = exec_to_buffer(args, 0, 1);
-    printf("%s", buf);
+    char *buf;
+    char *args[] = {"./dbxcli", "account", NULL};
+    do{       
+        buf = exec_to_buffer(args, FALSE, TRUE);
+        printf("%s", buf);
+    }while(strlen(buf));
 }
 
 int main(int argc, char **argv)
