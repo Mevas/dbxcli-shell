@@ -242,7 +242,8 @@ int execute(char **args)
         }
     }
 
-    return launch(args);
+    printf("dbsh: unknown command %s, run \"help\" for usage\n", args[0]);
+    return -1;
 }
 
 // Main shell loop
