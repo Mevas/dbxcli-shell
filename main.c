@@ -128,6 +128,8 @@ int lrm(char **args);
 char *builtin_str[] = {
     "lcd",
     "lls",
+    "lmv",
+    "lpwd",
     "help",
     "exit",
     "quit",
@@ -136,7 +138,9 @@ char *builtin_str[] = {
 
 int (*builtin_func[])(char **) = {
     &lcd,
-    &lls,
+    &redirect_launch,
+    &redirect_launch,
+    &redirect_launch,
     &help,
     &sh_exit,
     &sh_exit,
@@ -165,11 +169,6 @@ int lcd(char **args)
         }
     }
     return 1;
-}
-
-int lls(char **args)
-{
-    return redirect_launch(args);
 }
 
 int lmkdir(char **args)
