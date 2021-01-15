@@ -102,6 +102,15 @@ int launch(char **args)
 
 // Built-ins
 
+// Remove first char from function name(Usage: lls - launch(ls))
+int redirect_launch(char **args)
+{
+    args[0]++;
+    int retVal = launch(args);
+    args[0]--;
+    return retVal;
+}
+
 /*
   Function Declarations for builtin shell commands:
  */
@@ -109,12 +118,14 @@ int lcd(char **args);
 int help(char **args);
 int sh_exit(char **args);
 int lmkdir(char **args);
+int lls(char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
  */
 char *builtin_str[] = {
     "lcd",
+    "lls",
     "help",
     "exit",
     "quit",
@@ -123,6 +134,7 @@ char *builtin_str[] = {
 
 int (*builtin_func[])(char **) = {
     &lcd,
+    &lls,
     &help,
     &sh_exit,
     &sh_exit,
@@ -150,6 +162,11 @@ int lcd(char **args)
         }
     }
     return 1;
+}
+
+int lls(char **args)
+{
+    return redirect_launch(args);
 }
 
 int lmkdir(char **args)
