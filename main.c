@@ -7,6 +7,50 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <regex.h>
+#include <fcntl.h>
+#include <errno.h>
+
+#define OFFSET_SIZE 1024
+char* exec_to_buffer(char **args, int outputOutput, int outputError) {
+    int pipefd[2];
+    pipe(pipefd);
+    pid_t pid = fork();
+
+    if (pid < 0) {
+        perror("fork");
+        return NULL;
+    }
+
+    else if (pid == 0) {
+        close(pipefd[0]);
+
+        if(outputOutput) dup2(pipefd[1], 1);
+        if(outputError) dup2(pipefd[1], 2);
+
+        close(pipefd[1]);
+        execvp(args[0], args);
+    }
+    else {
+        wait(NULL);
+        char *buffer = malloc(OFFSET_SIZE * sizeof *buffer);
+
+        close(pipefd[1]);
+        int offset = 0;
+        while (read(pipefd[0], buffer + offset, OFFSET_SIZE) != 0)
+        {
+            offset += OFFSET_SIZE;
+            char *p = realloc(buffer, (offset + OFFSET_SIZE) * sizeof * buffer);
+            if (!p) {
+                perror("Realloc issues");
+            } else {
+                buffer = p;
+            }
+        }
+
+        close(pipefd[0]);
+        return buffer;
+    }
+}
 
 // Reading
 
@@ -35,6 +79,7 @@ char *read_line(void)
 #define TOK_DELIM " \t\r\n\a"
 char **split_line(int *argc, char *line)
 {
+    (*argc) = 0;
     int bufsize = TOK_BUFSIZE, position = 0;
     char **tokens = malloc(bufsize * sizeof(char *));
     char *token;
@@ -279,10 +324,20 @@ void loop(void)
     } while (status);
 }
 
+void login() {
+    char line[] = "";
+    int argc;
+    int status;
+
+    char *args[] = {"./dbxcli", "version", NULL};
+    char *buf = exec_to_buffer(args, 0, 1);
+    printf("%s", buf);
+}
+
 int main(int argc, char **argv)
 {
     // Load config files, if any.
-
+    login();
     // Run command loop.
     loop();
 
