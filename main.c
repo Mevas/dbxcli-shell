@@ -10,6 +10,8 @@
 #include <fcntl.h>
 #include <errno.h>
 
+const char* DB_COMMAND = "./dbxcli";
+
 char *path = "/";
 
 // Note: This function returns a pointer to a substring of the original string.
@@ -43,10 +45,11 @@ char *trimwhitespace(char *str)
 #define TRUE 1
 
 #define OFFSET_SIZE 1024
+
 char *exec_to_buffer(char **args, int outputOutput, int outputError)
 {
     int pipefd[2];
-    pipe(pipefd);
+    pipe(pipefd); //pipefd[0] for reading, pipefd[1] for writing
     pid_t pid = fork();
 
     if (pid < 0)
@@ -60,9 +63,9 @@ char *exec_to_buffer(char **args, int outputOutput, int outputError)
         close(pipefd[0]);
 
         if (outputOutput)
-            dup2(pipefd[1], 1);
+            dup2(pipefd[1], STDOUT_FILENO);
         if (outputError)
-            dup2(pipefd[1], 2);
+            dup2(pipefd[1], STDERR_FILENO);
 
         close(pipefd[1]);
         execvp(args[0], args);
@@ -94,7 +97,6 @@ char *exec_to_buffer(char **args, int outputOutput, int outputError)
 }
 
 // Reading
-
 char *read_line(void)
 {
     char *line = NULL;
@@ -191,13 +193,16 @@ int launch(char **args)
 
 int db_launch(int argc, char **args)
 {
+    char *dbxargs[argc + 2];
+    dbxargs[0] = DB_COMMAND;
     for (int i = 0; i < argc; i++)
     {
-        args[i + 1] = args[i];
+        dbxargs[i + 1] = args[i];
     }
-    args[0] = "./dbxcli";
 
-    launch(args);
+    dbxargs[argc + 1] = NULL;
+
+    launch(dbxargs);
 }
 
 // Built-ins
@@ -267,7 +272,7 @@ int cd(char **args)
     }
 
     char *ls_args[] = {"./dbxcli", "ls", NULL};
-    char *buffer = exec_to_buffer(ls_args, 1, 1);
+    char *buffer = exec_to_buffer(ls_args, TRUE, TRUE);
     int num_files;
 
     char **files = split_string(&num_files, buffer, "/");
@@ -390,7 +395,7 @@ int execute(int argc, char **args)
     }
 
     db_launch(argc, args);
-    printf("dbsh: unknown command %s, run \"help\" for usage\n", args[0]);
+    //printf("dbsh: unknown command %s, run \"help\" for usage\n", args[0]);
     return -1;
 }
 
