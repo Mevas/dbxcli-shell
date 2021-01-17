@@ -253,6 +253,7 @@ int lrm(int argc, char **args);
 int cd(int argc, char **args);
 int ls(int argc, char **args);
 int db_mkdir(int argc, char **args);
+int rm(int argc, char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
@@ -269,7 +270,8 @@ char *builtin_str[] = {
     "lrm",
     "cd",
     "ls",
-    "mkdir"};
+    "mkdir",
+    "rm"};
 
 int (*builtin_func[])(int, char **) = {
     &lcd,
@@ -283,7 +285,8 @@ int (*builtin_func[])(int, char **) = {
     &lrm,
     &cd,
     &ls,
-    &db_mkdir};
+    &db_mkdir,
+    &rm};
 
 int num_builtins()
 {
@@ -499,6 +502,22 @@ int db_mkdir(int argc, char **args)
     if (args[1] == NULL)
     {
         fprintf(stderr, "dbsh: usage: mkdir [name]\n");
+    }
+    else
+    {
+        int path_length;
+        char **path = get_new_path(args[1], &path_length);
+        args[1] = get_path_string(path, path_length);
+        db_launch(argc, args);
+    }
+    return 1;
+}
+
+int rm(int argc, char **args)
+{
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "dbsh: usage: rm [name]\n");
     }
     else
     {
