@@ -188,26 +188,30 @@ char **split_string(int *argc, char *line, char *delimiter)
     return tokens;
 }
 
-char* del_ch_occurences(char str[], char ch) {
-   int i, j = 0;
-   int size = strlen(str);
-   char ch1;
-   int new_size = 64;
-   char *new_str = malloc(new_size);
- 
-   for (i = 0; i < size; i++) {
-      if (str[i] != ch) {
-         ch1 = str[i];
-         new_str[j++] = ch1;
-         if(j == new_size) {
-            new_str = realloc(new_str, size >> 1);
-         }
-      }
-   }
+char *del_ch_occurences(char str[], char ch)
+{
+    int i, j = 0;
+    int size = strlen(str);
+    char ch1;
+    int new_size = 64;
+    char *new_str = malloc(new_size);
 
-   new_str[j] = '\0';
+    for (i = 0; i < size; i++)
+    {
+        if (str[i] != ch)
+        {
+            ch1 = str[i];
+            new_str[j++] = ch1;
+            if (j == new_size)
+            {
+                new_str = realloc(new_str, size >> 1);
+            }
+        }
+    }
 
-   return new_str;
+    new_str[j] = '\0';
+
+    return new_str;
 }
 
 char **split_line(int *argc, char *line, char *delimiters)
@@ -219,9 +223,10 @@ char **split_line(int *argc, char *line, char *delimiters)
     args[(*argc)++] = line;
 
     line = trimwhitespace(line);
-    for (int i = 0; i < strlen(line); i++)
+    int length = strlen(line);
+    for (int i = 0; i < length; i++)
     {
-        
+
         if (line[i] == '"')
         {
             ignore_delimiters = !ignore_delimiters;
@@ -238,10 +243,10 @@ char **split_line(int *argc, char *line, char *delimiters)
                         return args;
                     }
                 }
-               
+
                 args[(*argc)++] = line + i;
                 i--;
-            }         
+            }
         }
     }
 
@@ -249,7 +254,6 @@ char **split_line(int *argc, char *line, char *delimiters)
     {
         args[i] = del_ch_occurences(args[i], '"');
     }
-    
 
     return args;
 }
@@ -412,6 +416,11 @@ char **move_into_folder(char **cd_path_array, int *cd_path_length, char *name)
         {
             free(cd_path_array[--(*cd_path_length)]);
         }
+        return cd_path_array;
+    }
+
+    if (strcmp(name, ".") == 0)
+    {
         return cd_path_array;
     }
 
