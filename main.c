@@ -187,6 +187,28 @@ char **split_string(int *argc, char *line, char *delimiter)
     return tokens;
 }
 
+char* del_ch_occurences(char str[], char ch) {
+   int i, j = 0;
+   int size = strlen(str);
+   char ch1;
+   int new_size = 64;
+   char *new_str = malloc(new_size);
+ 
+   for (i = 0; i < size; i++) {
+      if (str[i] != ch) {
+         ch1 = str[i];
+         new_str[j++] = ch1;
+         if(j == new_size) {
+            new_str = realloc(new_str, size >> 1);
+         }
+      }
+   }
+
+   new_str[j] = '\0';
+
+   return new_str;
+}
+
 char **split_line(int *argc, char *line, char *delimiters)
 {
     int ignore_delimiters = FALSE;
@@ -196,9 +218,9 @@ char **split_line(int *argc, char *line, char *delimiters)
     args[(*argc)++] = line;
 
     line = trimwhitespace(line);
-
     for (int i = 0; i < strlen(line); i++)
     {
+        
         if (line[i] == '"')
         {
             ignore_delimiters = !ignore_delimiters;
@@ -207,21 +229,27 @@ char **split_line(int *argc, char *line, char *delimiters)
         {
             if (strchr(delimiters, line[i]))
             {
-                int offset = 1;
-                while (strchr(delimiters, line[i + offset]))
+                line[i] = 0;
+                while (strchr(delimiters, line[++i]))
                 {
-                    if (line[i + offset] == 0)
+                    if (line[i] == 0)
                     {
                         return args;
                     }
-                    offset++;
                 }
-
-                line[i] = 0;
-                args[(*argc)++] = line + i + offset;
-            }
+               
+                args[(*argc)++] = line + i;
+                i--;
+            }         
         }
     }
+
+    for (int i = 0; i < *argc; i++)
+    {
+        args[i] = del_ch_occurences(args[i], '"');
+        printf("%s\n", args[i]);
+    }
+    
 
     return args;
 }
