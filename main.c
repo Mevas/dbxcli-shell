@@ -9,6 +9,7 @@
 #include <regex.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <ctype.h>
 
 #define FALSE 0
 #define TRUE 1
