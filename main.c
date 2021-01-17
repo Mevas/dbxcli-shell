@@ -701,6 +701,7 @@ int db_mv(int argc, char **args)
         int dest_length = path_length;
         char **src_path = get_new_path(args[1], &src_length);
         char **dest_path = get_new_path(args[2], &dest_length);
+        dest_path = append_to_array(dest_path, &dest_length, src_path[src_length - 1]);
         char *src = get_path_string(src_path, src_length);
         char *dest = get_path_string(dest_path, dest_length);
 
