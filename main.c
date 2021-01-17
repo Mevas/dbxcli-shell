@@ -12,7 +12,11 @@
 
 const char* DB_COMMAND = "./dbxcli";
 
-char *path = "/";
+//TODO: either we start from empty string and when cd we append first '/'
+//OR we make sure not to print last char of path and always end it with '/'
+//NOW it always end with '/' and we print the whole path
+//CHANGED: this has to be dinamically allocated with malloc else we can't realloc
+char *path = NULL;
 
 // Note: This function returns a pointer to a substring of the original string.
 // If the given string was allocated dynamically, the caller must not overwrite
@@ -39,6 +43,25 @@ char *trimwhitespace(char *str)
     end[1] = '\0';
 
     return str;
+}
+//Note: pass target as refference
+//TODO: prob better/safer to return new address, no more need to pass by ref
+void str_resize_cat(char** target, char *addition)
+{
+    if(*target == NULL) {
+        *target = malloc(strlen(addition));
+        strcpy(*target, addition);
+
+        return;
+    }
+
+    char* p = realloc(*target, strlen(*target) + strlen(addition));
+    if(!p) {
+        //TODO: this is bad :(
+    }
+    *target = p;
+    strcat(*target, addition);
+    return 0;
 }
 
 #define FALSE 0
@@ -262,48 +285,33 @@ int num_builtins()
 /*
   Builtin function implementations.
 */
+//TODO: integrate path with the rest of the dbxcli commands
 int cd(char **args)
 {
-    char *cd_path = path;
     if (args[1] == NULL)
     {
         fprintf(stderr, "dbsh: expected path\n");
-        return 1;
+        return -1;
     }
 
-    char *ls_args[] = {"./dbxcli", "ls", NULL};
-    char *buffer = exec_to_buffer(ls_args, TRUE, TRUE);
-    int num_files;
+    char *cd_path = NULL;
+    str_resize_cat(&cd_path, path);
+    //TODO: check for ../
+    str_resize_cat(&cd_path, args[1]);
 
-    char **files = split_string(&num_files, buffer, "/");
-
-    int exists = 0;
-    for (int i = 0; i < num_files; i++)
-    {
-        if (strcmp(files[i], args[1]) == 0)
-        {
-            exists = 1;
-        }
-    }
-
-    if (!exists)
+    char *ls_args[] = {"./dbxcli", "ls", cd_path ,NULL};
+    char *buffer = exec_to_buffer(ls_args, TRUE, FALSE);
+    //TODO : see for error or smth
+    if (!strlen(buffer))
     {
         fprintf(stderr, "dbsh: path doesn't exist\n");
+        return -1;
     }
-    else
-    {
-        char *p = realloc(cd_path, strlen(args[1]) * sizeof *cd_path);
-        if (!p)
-        {
-            perror("Realloc issues");
-        }
-        else
-        {
-            cd_path = p;
-        }
-        strcat(cd_path, args[1]);
-        printf("%s%s", cd_path, args[1]);
-    }
+
+    str_resize_cat(&cd_path, "/");
+    path = realloc(path, strlen(cd_path));
+    strcpy(path, cd_path);
+    //printf("%s%s", cd_path, args[1]);
 
     return 1;
 }
@@ -410,7 +418,7 @@ void loop(void)
     do
     {
         int argc = 0;
-        printf("> ");
+        printf("%s> ", path);
         line = read_line();
         args = split_string(&argc, line, TOK_DELIM);
         status = execute(argc, args);
@@ -434,6 +442,7 @@ void login()
 
 int main(int argc, char **argv)
 {
+    str_resize_cat(&path, "/");
     // Load config files, if any.
     login();
     // Run command loop.
