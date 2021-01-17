@@ -10,7 +10,10 @@
 #include <fcntl.h>
 #include <errno.h>
 
-const char* DB_COMMAND = "./dbxcli";
+#define FALSE 0
+#define TRUE 1
+
+const char *DB_COMMAND = "./dbxcli";
 
 //TODO: either we start from empty string and when cd we append first '/'
 //OR we make sure not to print last char of path and always end it with '/'
@@ -44,28 +47,35 @@ char *trimwhitespace(char *str)
 
     return str;
 }
+
+int startsWith(const char *pre, const char *str)
+{
+    size_t lenpre = strlen(pre),
+           lenstr = strlen(str);
+    return lenstr < lenpre ? FALSE : memcmp(pre, str, lenpre) == 0;
+}
+
 //Note: pass target as refference
 //TODO: prob better/safer to return new address, no more need to pass by ref
-void str_resize_cat(char** target, char *addition)
+void str_resize_cat(char **target, char *addition)
 {
-    if(*target == NULL) {
+    if (*target == NULL)
+    {
         *target = malloc(strlen(addition));
         strcpy(*target, addition);
 
         return;
     }
 
-    char* p = realloc(*target, strlen(*target) + strlen(addition));
-    if(!p) {
+    char *p = realloc(*target, strlen(*target) + strlen(addition));
+    if (!p)
+    {
         //TODO: this is bad :(
     }
     *target = p;
     strcat(*target, addition);
     return 0;
 }
-
-#define FALSE 0
-#define TRUE 1
 
 #define OFFSET_SIZE 1024
 
@@ -299,10 +309,10 @@ int cd(char **args)
     //TODO: check for ../
     str_resize_cat(&cd_path, args[1]);
 
-    char *ls_args[] = {"./dbxcli", "ls", cd_path ,NULL};
-    char *buffer = exec_to_buffer(ls_args, TRUE, FALSE);
+    char *ls_args[] = {"./dbxcli", "ls", cd_path, NULL};
+    char *buffer = exec_to_buffer(ls_args, TRUE, TRUE);
     //TODO : see for error or smth
-    if (!strlen(buffer))
+    if (startsWith("Error", buffer))
     {
         fprintf(stderr, "dbsh: path doesn't exist\n");
         return -1;
