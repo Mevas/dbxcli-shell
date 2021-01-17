@@ -45,8 +45,7 @@ int startsWith(const char *pre, const char *str)
     return lenstr < lenpre ? FALSE : memcmp(pre, str, lenpre) == 0;
 }
 
-//Note: pass target as refference
-//TODO: prob better/safer to return new address, no more need to pass by ref
+//Note: pass target as reference
 void str_resize_cat(char **target, char *addition)
 {
     if (*target == NULL)
@@ -188,8 +187,46 @@ char **split_string(int *argc, char *line, char *delimiter)
     return tokens;
 }
 
-// Process launcher
+char **split_line(int *argc, char *line, char *delimiters)
+{
+    int ignore_delimiters = FALSE;
+    (*argc) = 0;
 
+    char **args = malloc(64 * sizeof(char *));
+    args[(*argc)++] = line;
+
+    line = trimwhitespace(line);
+
+    for (int i = 0; i < strlen(line); i++)
+    {
+        if (line[i] == '"')
+        {
+            ignore_delimiters = !ignore_delimiters;
+        }
+        else if (!ignore_delimiters)
+        {
+            if (strchr(delimiters, line[i]))
+            {
+                int offset = 1;
+                while (strchr(delimiters, line[i + offset]))
+                {
+                    if (line[i + offset] == 0)
+                    {
+                        return args;
+                    }
+                    offset++;
+                }
+
+                line[i] = 0;
+                args[(*argc)++] = line + i + offset;
+            }
+        }
+    }
+
+    return args;
+}
+
+// Process launcher
 int launch(char **args)
 {
     pid_t pid, wpid;
@@ -395,7 +432,6 @@ char **get_new_path(char *path, int *length)
 /*
   Builtin function implementations.
 */
-//TODO: integrate path with the rest of the dbxcli commands
 int cd(int argc, char **args)
 {
     if (args[1] == NULL)
@@ -677,8 +713,7 @@ int execute(int argc, char **args)
         }
     }
 
-    db_launch(argc, args);
-    //printf("dbsh: unknown command %s, run \"help\" for usage\n", args[0]);
+    printf("dbsh: unknown command %s, run \"help\" for usage\n", args[0]);
     return -1;
 }
 
@@ -700,7 +735,7 @@ void loop(void)
         int argc = 0;
         print_path();
         line = read_line();
-        args = split_string(&argc, line, TOK_DELIM);
+        args = split_line(&argc, line, TOK_DELIM);
         status = execute(argc, args);
         free(line);
         free(args);
@@ -722,12 +757,9 @@ void login()
 
 int main(int argc, char **argv)
 {
-    // Load config files, if any.
     login();
-    // Run command loop.
-    loop();
 
-    // Perform any shutdown/cleanup.
+    loop();
 
     return EXIT_SUCCESS;
 }
