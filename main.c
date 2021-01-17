@@ -161,6 +161,7 @@ char **split_string(int *argc, char *line, char *delimiter)
     token = strtok(line, delimiter);
     while (token != NULL)
     {
+        // TODO: add params with ""
         (*argc)++;
         tokens[position] = trimwhitespace(token);
         position++;
@@ -254,6 +255,7 @@ int cd(int argc, char **args);
 int ls(int argc, char **args);
 int db_mkdir(int argc, char **args);
 int rm(int argc, char **args);
+int db_put(int argc, char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
@@ -271,7 +273,8 @@ char *builtin_str[] = {
     "cd",
     "ls",
     "mkdir",
-    "rm"};
+    "rm",
+    "put"};
 
 int (*builtin_func[])(int, char **) = {
     &lcd,
@@ -286,7 +289,8 @@ int (*builtin_func[])(int, char **) = {
     &cd,
     &ls,
     &db_mkdir,
-    &rm};
+    &rm,
+    &db_put};
 
 int num_builtins()
 {
@@ -525,6 +529,33 @@ int rm(int argc, char **args)
         char **path = get_new_path(args[1], &path_length);
         args[1] = get_path_string(path, path_length);
         db_launch(argc, args);
+    }
+    return 1;
+}
+
+int db_put(int argc, char **args)
+{
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "dbsh: usage: put [source] (destination)\n");
+    }
+    else
+    {
+        if (args[2] != NULL)
+        {
+            int path_length;
+            char **path = get_new_path(args[2], &path_length);
+            char **p = append_to_array(path, &path_length, args[1]);
+            char *put_args[] = {"./dbxcli", "put", args[1], get_path_string(path, path_length), NULL};
+            launch(put_args);
+        }
+        else
+        {
+            int p_length = path_length;
+            char **p = append_to_array(path_array, &p_length, args[1]);
+            char *put_args[] = {"./dbxcli", "put", args[1], get_path_string(p, p_length), NULL};
+            launch(put_args);
+        }
     }
     return 1;
 }
