@@ -15,17 +15,10 @@
 
 const char *DB_COMMAND = "./dbxcli";
 
-//TODO: either we start from empty string and when cd we append first '/'
-//OR we make sure not to print last char of path and always end it with '/'
-//NOW it always end with '/' and we print the whole path
-//CHANGED: this has to be dinamically allocated with malloc else we can't realloc
 char *path = NULL;
+char **path_array;
+int path_length = 0;
 
-// Note: This function returns a pointer to a substring of the original string.
-// If the given string was allocated dynamically, the caller must not overwrite
-// that pointer with the returned value, since the original pointer must be
-// deallocated using the same allocator with which it was allocated.  The return
-// value must NOT be deallocated using free() etc.
 char *trimwhitespace(char *str)
 {
     char *end;
@@ -34,7 +27,7 @@ char *trimwhitespace(char *str)
     while (isspace((unsigned char)*str))
         str++;
 
-    if (*str == 0) // All spaces?
+    if (*str == 0)
         return str;
 
     // Trim trailing space
@@ -70,11 +63,11 @@ void str_resize_cat(char **target, char *addition)
     char *p = realloc(*target, strlen(*target) + strlen(addition));
     if (!p)
     {
-        //TODO: this is bad :(
+        perror("Something went wrong");
+        return;
     }
     *target = p;
     strcat(*target, addition);
-    return 0;
 }
 
 #define OFFSET_SIZE 1024
@@ -133,7 +126,7 @@ char *exec_to_buffer(char **args, int outputOutput, int outputError)
 char *read_line(void)
 {
     char *line = NULL;
-    size_t bufsize = 0; // have getline allocate a buffer for us
+    size_t bufsize = 0;
 
     if (getline(&line, &bufsize, stdin) == -1)
     {
@@ -292,6 +285,44 @@ int num_builtins()
     return sizeof(builtin_str) / sizeof(char *);
 }
 
+char *get_path_string(char **_path_array, int _path_length)
+{
+    char *path_string = NULL;
+
+    if (_path_length == 0)
+    {
+        str_resize_cat(&path_string, "/");
+    }
+
+    for (int i = 0; i < _path_length; i++)
+    {
+        str_resize_cat(&path_string, "/");
+        str_resize_cat(&path_string, _path_array[i]);
+    }
+    return path_string;
+}
+
+char **move_into_folder(char **cd_path_array, int *cd_path_length, char *name)
+{
+    // Move back
+    if (strcmp(name, "..") == 0)
+    {
+        if (*cd_path_length > 0)
+        {
+            free(cd_path_array[--(*cd_path_length)]);
+        }
+        return cd_path_array;
+    }
+
+    // Append the new folder name to the path
+    char **new_path_array;
+    new_path_array = realloc(cd_path_array, (++(*cd_path_length)) * sizeof(char *));
+    new_path_array[(*cd_path_length) - 1] = malloc(strlen(name));
+    strcpy(new_path_array[(*cd_path_length) - 1], name);
+
+    return new_path_array;
+}
+
 /*
   Builtin function implementations.
 */
@@ -304,24 +335,56 @@ int cd(char **args)
         return -1;
     }
 
-    char *cd_path = NULL;
-    str_resize_cat(&cd_path, path);
-    //TODO: check for ../
-    str_resize_cat(&cd_path, args[1]);
+    char **cd_path_array = malloc(path_length * sizeof(char *));
+    int cd_path_length = path_length;
 
-    char *ls_args[] = {"./dbxcli", "ls", cd_path, NULL};
+    // Copy the global path into a local variable
+    for (int i = 0; i < path_length; i++)
+    {
+        cd_path_array[i] = malloc(strlen(path_array[i]));
+        strcpy(cd_path_array[i], path_array[i]);
+    }
+
+    int names_length = 0;
+    char **names = split_string(&names_length, args[1], "/");
+
+    // For each folder name, compute the next path
+    for (int i = 0; i < names_length; i++)
+    {
+        char **p = move_into_folder(cd_path_array, &cd_path_length, names[i]);
+        if (!p)
+        {
+            perror("Something went wrong");
+            return -1;
+        }
+        cd_path_array = p;
+    }
+
+    // Check if path exists
+    char *ls_args[] = {"./dbxcli", "ls", get_path_string(cd_path_array, cd_path_length), NULL};
     char *buffer = exec_to_buffer(ls_args, TRUE, TRUE);
-    //TODO : see for error or smth
+
     if (startsWith("Error", buffer))
     {
         fprintf(stderr, "dbsh: path doesn't exist\n");
         return -1;
     }
 
-    str_resize_cat(&cd_path, "/");
-    path = realloc(path, strlen(cd_path));
-    strcpy(path, cd_path);
-    //printf("%s%s", cd_path, args[1]);
+    // Free the global path
+    for (int i = 0; i < path_length; i++)
+    {
+        free(path_array[i]);
+    }
+    free(path_array);
+
+    // Put local computated path into the global path
+    path_array = malloc(cd_path_length * sizeof(char *));
+    for (int i = 0; i < cd_path_length; i++)
+    {
+        path_array[i] = malloc(strlen(cd_path_array[i]));
+        strcpy(path_array[i], cd_path_array[i]);
+    }
+    path_length = cd_path_length;
 
     return 1;
 }
@@ -419,13 +482,7 @@ int execute(int argc, char **args)
 
 void print_path()
 {
-    char *formatted_path = malloc(strlen(path));
-    strcpy(formatted_path, path);
-    if (strlen(formatted_path) > 1)
-    {
-        formatted_path[strlen(formatted_path) - 1] = 0;
-    }
-    printf("%s> ", formatted_path);
+    printf("%s> ", get_path_string(path_array, path_length));
 }
 
 // Main shell loop
