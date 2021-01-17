@@ -252,6 +252,7 @@ int lls(int argc, char **args);
 int lrm(int argc, char **args);
 int cd(int argc, char **args);
 int ls(int argc, char **args);
+int db_mkdir(int argc, char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
@@ -267,7 +268,8 @@ char *builtin_str[] = {
     "lmkdir",
     "lrm",
     "cd",
-    "ls"};
+    "ls",
+    "mkdir"};
 
 int (*builtin_func[])(int, char **) = {
     &lcd,
@@ -280,7 +282,8 @@ int (*builtin_func[])(int, char **) = {
     &lmkdir,
     &lrm,
     &cd,
-    &ls};
+    &ls,
+    &db_mkdir};
 
 int num_builtins()
 {
@@ -363,16 +366,6 @@ char **get_new_path(char *path, int *length)
         cd_path_array = p;
     }
 
-    // Check if path exists
-    char *ls_args[] = {"./dbxcli", "ls", get_path_string(cd_path_array, cd_path_length), NULL};
-    char *buffer = exec_to_buffer(ls_args, TRUE, TRUE);
-
-    if (startsWith("Error", buffer))
-    {
-        fprintf(stderr, "dbsh: path doesn't exist\n");
-        return NULL;
-    }
-
     (*length) = cd_path_length;
 
     return cd_path_array;
@@ -393,8 +386,13 @@ int cd(int argc, char **args)
     int new_length;
     char **new_path = get_new_path(args[1], &new_length);
 
-    if (!new_path)
+    // Check if path exists
+    char *ls_args[] = {"./dbxcli", "ls", get_path_string(new_path, new_length), NULL};
+    char *buffer = exec_to_buffer(ls_args, TRUE, TRUE);
+
+    if (startsWith("Error", buffer))
     {
+        fprintf(stderr, "dbsh: path doesn't exist\n");
         return -1;
     }
 
@@ -478,11 +476,37 @@ int ls(int argc, char **args)
     {
         int path_length;
         char **path = get_new_path(args[1], &path_length);
-        args[1] = get_path_string(path, path_length);
-        db_launch(argc, args);
+
+        // Check if path exists
+        char *ls_args[] = {"./dbxcli", "ls", get_path_string(path, path_length), NULL};
+        char *buffer = exec_to_buffer(ls_args, TRUE, TRUE);
+
+        if (startsWith("Error", buffer))
+        {
+            fprintf(stderr, "dbsh: path doesn't exist\n");
+            return -1;
+        }
+
+        printf("%s", buffer);
     }
 
     printf("\n");
+    return 1;
+}
+
+int db_mkdir(int argc, char **args)
+{
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "dbsh: usage: mkdir [name]\n");
+    }
+    else
+    {
+        int path_length;
+        char **path = get_new_path(args[1], &path_length);
+        args[1] = get_path_string(path, path_length);
+        db_launch(argc, args);
+    }
     return 1;
 }
 
