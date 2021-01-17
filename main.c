@@ -262,6 +262,8 @@ int db_mkdir(int argc, char **args);
 int rm(int argc, char **args);
 int db_put(int argc, char **args);
 int db_get(int argc, char **args);
+int db_cp(int argc, char **args);
+int db_mv(int argc, char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
@@ -281,7 +283,9 @@ char *builtin_str[] = {
     "mkdir",
     "rm",
     "put",
-    "get"};
+    "get",
+    "cp",
+    "mv"};
 
 int (*builtin_func[])(int, char **) = {
     &lcd,
@@ -298,7 +302,9 @@ int (*builtin_func[])(int, char **) = {
     &db_mkdir,
     &rm,
     &db_put,
-    &db_get};
+    &db_get,
+    &db_cp,
+    &db_mv};
 
 int num_builtins()
 {
@@ -576,11 +582,59 @@ int db_get(int argc, char **args)
     }
     else
     {
-
         int p_length = path_length;
         char **p = append_to_array(path_array, &p_length, args[1]);
         char *put_args[] = {get_dbxcli(), "get", get_path_string(p, p_length), args[2], NULL};
         launch(put_args);
+    }
+    return 1;
+}
+
+int db_cp(int argc, char **args)
+{
+    if (args[1] == NULL || args[2] == NULL)
+    {
+        fprintf(stderr, "dbsh: usage: cp [source] [destination]\n");
+    }
+    else
+    {
+        for (int i = 1; i < argc - 1; i++)
+        {
+            int src_length = path_length;
+            char **src_path = get_new_path(args[i], &src_length);
+            char *src = get_path_string(src_path, src_length);
+            args[i] = src + 1;
+        }
+
+        int dest_length = path_length;
+        char **dest_path = get_new_path(args[argc - 1], &dest_length);
+        char *dest = get_path_string(dest_path, dest_length);
+        args[argc - 1] = dest;
+
+        db_launch(argc, args);
+    }
+    return 1;
+}
+
+int db_mv(int argc, char **args)
+{
+    if (args[1] == NULL || args[2] == NULL)
+    {
+        fprintf(stderr, "dbsh: usage: mv [source] [destination]\n");
+    }
+    else
+    {
+        int src_length = path_length;
+        int dest_length = path_length;
+        char **src_path = get_new_path(args[1], &src_length);
+        char **dest_path = get_new_path(args[2], &dest_length);
+        char *src = get_path_string(src_path, src_length);
+        char *dest = get_path_string(dest_path, dest_length);
+
+        args[1] = src + 1;
+        args[2] = dest;
+
+        db_launch(argc, args);
     }
     return 1;
 }
