@@ -417,6 +417,17 @@ int execute(int argc, char **args)
     return -1;
 }
 
+void print_path()
+{
+    char *formatted_path = malloc(strlen(path));
+    strcpy(formatted_path, path);
+    if (strlen(formatted_path) > 1)
+    {
+        formatted_path[strlen(formatted_path) - 1] = 0;
+    }
+    printf("%s> ", formatted_path);
+}
+
 // Main shell loop
 
 void loop(void)
@@ -428,7 +439,7 @@ void loop(void)
     do
     {
         int argc = 0;
-        printf("%s> ", path);
+        print_path();
         line = read_line();
         args = split_string(&argc, line, TOK_DELIM);
         status = execute(argc, args);
