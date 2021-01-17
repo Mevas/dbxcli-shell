@@ -248,7 +248,6 @@ char **split_line(int *argc, char *line, char *delimiters)
     for (int i = 0; i < *argc; i++)
     {
         args[i] = del_ch_occurences(args[i], '"');
-        printf("%s\n", args[i]);
     }
     
 
