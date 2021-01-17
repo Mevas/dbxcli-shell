@@ -252,6 +252,7 @@ int lmkdir(char **args);
 int lls(char **args);
 int lrm(char **args);
 int cd(char **args);
+void ls(int argc, char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
@@ -266,7 +267,8 @@ char *builtin_str[] = {
     "quit",
     "lmkdir",
     "lrm",
-    "cd"};
+    "cd",
+    "ls"};
 
 int (*builtin_func[])(char **) = {
     &lcd,
@@ -278,7 +280,8 @@ int (*builtin_func[])(char **) = {
     &sh_exit,
     &lmkdir,
     &lrm,
-    &cd};
+    &cd,
+    &ls};
 
 int num_builtins()
 {
@@ -302,6 +305,16 @@ char *get_path_string(char **_path_array, int _path_length)
     return path_string;
 }
 
+void *append(char **array, int *length, char *element)
+{
+    char **new_array;
+    new_array = realloc(array, (++(*length)) * sizeof(char *));
+    new_array[(*length) - 1] = malloc(strlen(element));
+    strcpy(new_array[(*length) - 1], element);
+
+    return new_array;
+}
+
 char **move_into_folder(char **cd_path_array, int *cd_path_length, char *name)
 {
     // Move back
@@ -314,13 +327,8 @@ char **move_into_folder(char **cd_path_array, int *cd_path_length, char *name)
         return cd_path_array;
     }
 
-    // Append the new folder name to the path
-    char **new_path_array;
-    new_path_array = realloc(cd_path_array, (++(*cd_path_length)) * sizeof(char *));
-    new_path_array[(*cd_path_length) - 1] = malloc(strlen(name));
-    strcpy(new_path_array[(*cd_path_length) - 1], name);
-
-    return new_path_array;
+    // Append the new folder name to the path and return it
+    return append(cd_path_array, cd_path_length, name);
 }
 
 /*
@@ -335,14 +343,20 @@ int cd(char **args)
         return -1;
     }
 
-    char **cd_path_array = malloc(path_length * sizeof(char *));
-    int cd_path_length = path_length;
+    char **cd_path_array = NULL;
+    int cd_path_length = 0;
 
-    // Copy the global path into a local variable
-    for (int i = 0; i < path_length; i++)
+    if (args[1][0] != '/')
     {
-        cd_path_array[i] = malloc(strlen(path_array[i]));
-        strcpy(cd_path_array[i], path_array[i]);
+        cd_path_array = malloc(path_length * sizeof(char *));
+        cd_path_length = path_length;
+
+        // Copy the global path into a local variable
+        for (int i = 0; i < path_length; i++)
+        {
+            cd_path_array[i] = malloc(strlen(path_array[i]));
+            strcpy(cd_path_array[i], path_array[i]);
+        }
     }
 
     int names_length = 0;
@@ -361,6 +375,7 @@ int cd(char **args)
     }
 
     // Check if path exists
+    printf("%s\n", get_path_string(cd_path_array, cd_path_length));
     char *ls_args[] = {"./dbxcli", "ls", get_path_string(cd_path_array, cd_path_length), NULL};
     char *buffer = exec_to_buffer(ls_args, TRUE, TRUE);
 
@@ -435,6 +450,15 @@ int lrm(char **args)
         }
     }
     return 1;
+}
+
+// dbxcli wrapper functions
+void ls(int argc, char **args)
+{
+    // daca are un / la inceput = verificam din root
+    //
+    // db_launch(argc, append(args, ));
+    return 0;
 }
 
 int help(char **args)
