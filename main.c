@@ -13,8 +13,6 @@
 #define FALSE 0
 #define TRUE 1
 
-const char *DB_COMMAND = "./dbxcli";
-
 char **path_array;
 int path_length = 0;
 
@@ -67,6 +65,13 @@ void str_resize_cat(char **target, char *addition)
     }
     *target = p;
     strcat(*target, addition);
+}
+
+char *get_dbxcli()
+{
+    char *path = NULL;
+    str_resize_cat(&path, getenv("PWD"));
+    str_resize_cat(&path, "/dbxcli");
 }
 
 #define OFFSET_SIZE 1024
@@ -220,7 +225,7 @@ int launch(char **args)
 int db_launch(int argc, char **args)
 {
     char *dbxargs[argc + 2];
-    dbxargs[0] = DB_COMMAND;
+    dbxargs[0] = get_dbxcli();
     for (int i = 0; i < argc; i++)
     {
         dbxargs[i + 1] = args[i];
@@ -256,6 +261,7 @@ int ls(int argc, char **args);
 int db_mkdir(int argc, char **args);
 int rm(int argc, char **args);
 int db_put(int argc, char **args);
+int db_get(int argc, char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
@@ -274,7 +280,8 @@ char *builtin_str[] = {
     "ls",
     "mkdir",
     "rm",
-    "put"};
+    "put",
+    "get"};
 
 int (*builtin_func[])(int, char **) = {
     &lcd,
@@ -290,7 +297,8 @@ int (*builtin_func[])(int, char **) = {
     &ls,
     &db_mkdir,
     &rm,
-    &db_put};
+    &db_put,
+    &db_get};
 
 int num_builtins()
 {
@@ -394,7 +402,7 @@ int cd(int argc, char **args)
     char **new_path = get_new_path(args[1], &new_length);
 
     // Check if path exists
-    char *ls_args[] = {"./dbxcli", "ls", get_path_string(new_path, new_length), NULL};
+    char *ls_args[] = {get_dbxcli(), "ls", get_path_string(new_path, new_length), NULL};
     char *buffer = exec_to_buffer(ls_args, TRUE, TRUE);
 
     if (startsWith("Error", buffer))
@@ -485,7 +493,7 @@ int ls(int argc, char **args)
         char **path = get_new_path(args[1], &path_length);
 
         // Check if path exists
-        char *ls_args[] = {"./dbxcli", "ls", get_path_string(path, path_length), NULL};
+        char *ls_args[] = {get_dbxcli(), "ls", get_path_string(path, path_length), NULL};
         char *buffer = exec_to_buffer(ls_args, TRUE, TRUE);
 
         if (startsWith("Error", buffer))
@@ -546,16 +554,33 @@ int db_put(int argc, char **args)
             int path_length;
             char **path = get_new_path(args[2], &path_length);
             char **p = append_to_array(path, &path_length, args[1]);
-            char *put_args[] = {"./dbxcli", "put", args[1], get_path_string(path, path_length), NULL};
+            char *put_args[] = {get_dbxcli(), "put", args[1], get_path_string(path, path_length), NULL};
             launch(put_args);
         }
         else
         {
             int p_length = path_length;
             char **p = append_to_array(path_array, &p_length, args[1]);
-            char *put_args[] = {"./dbxcli", "put", args[1], get_path_string(p, p_length), NULL};
+            char *put_args[] = {get_dbxcli(), "put", args[1], get_path_string(p, p_length), NULL};
             launch(put_args);
         }
+    }
+    return 1;
+}
+
+int db_get(int argc, char **args)
+{
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "dbsh: usage: get [source] (destination)\n");
+    }
+    else
+    {
+
+        int p_length = path_length;
+        char **p = append_to_array(path_array, &p_length, args[1]);
+        char *put_args[] = {get_dbxcli(), "get", get_path_string(p, p_length), args[2], NULL};
+        launch(put_args);
     }
     return 1;
 }
@@ -633,7 +658,7 @@ void login()
     int argc;
     int status;
     char *buf;
-    char *args[] = {"./dbxcli", "account", NULL};
+    char *args[] = {get_dbxcli(), "account", NULL};
     do
     {
         buf = exec_to_buffer(args, FALSE, TRUE);
