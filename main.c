@@ -15,7 +15,6 @@
 
 const char *DB_COMMAND = "./dbxcli";
 
-char *path = NULL;
 char **path_array;
 int path_length = 0;
 
@@ -234,7 +233,7 @@ int db_launch(int argc, char **args)
 // Built-ins
 
 // Remove first char from function name(Usage: lls - launch(ls))
-int redirect_launch(char **args)
+int redirect_launch(int argc, char **args)
 {
     args[0]++;
     int retVal = launch(args);
@@ -245,14 +244,14 @@ int redirect_launch(char **args)
 /*
   Function Declarations for builtin shell commands:
  */
-int lcd(char **args);
-int help(char **args);
-int sh_exit(char **args);
-int lmkdir(char **args);
-int lls(char **args);
-int lrm(char **args);
-int cd(char **args);
-void ls(int argc, char **args);
+int lcd(int argc, char **args);
+int help(int argc, char **args);
+int sh_exit(int argc, char **args);
+int lmkdir(int argc, char **args);
+int lls(int argc, char **args);
+int lrm(int argc, char **args);
+int cd(int argc, char **args);
+int ls(int argc, char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
@@ -270,7 +269,7 @@ char *builtin_str[] = {
     "cd",
     "ls"};
 
-int (*builtin_func[])(char **) = {
+int (*builtin_func[])(int, char **) = {
     &lcd,
     &redirect_launch,
     &redirect_launch,
@@ -305,7 +304,7 @@ char *get_path_string(char **_path_array, int _path_length)
     return path_string;
 }
 
-void *append(char **array, int *length, char *element)
+void *append_to_array(char **array, int *length, char *element)
 {
     char **new_array;
     new_array = realloc(array, (++(*length)) * sizeof(char *));
@@ -327,26 +326,16 @@ char **move_into_folder(char **cd_path_array, int *cd_path_length, char *name)
         return cd_path_array;
     }
 
-    // Append the new folder name to the path and return it
-    return append(cd_path_array, cd_path_length, name);
+    // Append_to_array the new folder name to the path and return it
+    return append_to_array(cd_path_array, cd_path_length, name);
 }
 
-/*
-  Builtin function implementations.
-*/
-//TODO: integrate path with the rest of the dbxcli commands
-int cd(char **args)
+char **get_new_path(char *path, int *length)
 {
-    if (args[1] == NULL)
-    {
-        fprintf(stderr, "dbsh: expected path\n");
-        return -1;
-    }
-
-    char **cd_path_array = NULL;
+    char **cd_path_array = malloc(0);
     int cd_path_length = 0;
 
-    if (args[1][0] != '/')
+    if (path[0] != '/')
     {
         cd_path_array = malloc(path_length * sizeof(char *));
         cd_path_length = path_length;
@@ -360,7 +349,7 @@ int cd(char **args)
     }
 
     int names_length = 0;
-    char **names = split_string(&names_length, args[1], "/");
+    char **names = split_string(&names_length, path, "/");
 
     // For each folder name, compute the next path
     for (int i = 0; i < names_length; i++)
@@ -369,19 +358,43 @@ int cd(char **args)
         if (!p)
         {
             perror("Something went wrong");
-            return -1;
+            return NULL;
         }
         cd_path_array = p;
     }
 
     // Check if path exists
-    printf("%s\n", get_path_string(cd_path_array, cd_path_length));
     char *ls_args[] = {"./dbxcli", "ls", get_path_string(cd_path_array, cd_path_length), NULL};
     char *buffer = exec_to_buffer(ls_args, TRUE, TRUE);
 
     if (startsWith("Error", buffer))
     {
         fprintf(stderr, "dbsh: path doesn't exist\n");
+        return NULL;
+    }
+
+    (*length) = cd_path_length;
+
+    return cd_path_array;
+}
+
+/*
+  Builtin function implementations.
+*/
+//TODO: integrate path with the rest of the dbxcli commands
+int cd(int argc, char **args)
+{
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "dbsh: expected path\n");
+        return -1;
+    }
+
+    int new_length;
+    char **new_path = get_new_path(args[1], &new_length);
+
+    if (!new_path)
+    {
         return -1;
     }
 
@@ -393,18 +406,18 @@ int cd(char **args)
     free(path_array);
 
     // Put local computated path into the global path
-    path_array = malloc(cd_path_length * sizeof(char *));
-    for (int i = 0; i < cd_path_length; i++)
+    path_array = malloc(new_length * sizeof(char *));
+    for (int i = 0; i < new_length; i++)
     {
-        path_array[i] = malloc(strlen(cd_path_array[i]));
-        strcpy(path_array[i], cd_path_array[i]);
+        path_array[i] = malloc(strlen(new_path[i]));
+        strcpy(path_array[i], new_path[i]);
     }
-    path_length = cd_path_length;
+    path_length = new_length;
 
     return 1;
 }
 
-int lcd(char **args)
+int lcd(int argc, char **args)
 {
     if (args[1] == NULL)
     {
@@ -420,7 +433,7 @@ int lcd(char **args)
     return 1;
 }
 
-int lmkdir(char **args)
+int lmkdir(int argc, char **args)
 {
     if (args[1] == NULL)
     {
@@ -436,7 +449,7 @@ int lmkdir(char **args)
     return 1;
 }
 
-int lrm(char **args)
+int lrm(int argc, char **args)
 {
     if (args[1] == NULL)
     {
@@ -453,15 +466,27 @@ int lrm(char **args)
 }
 
 // dbxcli wrapper functions
-void ls(int argc, char **args)
+int ls(int argc, char **args)
 {
-    // daca are un / la inceput = verificam din root
-    //
-    // db_launch(argc, append(args, ));
-    return 0;
+    if (args[1] == NULL)
+    {
+        char *path = get_path_string(path_array, path_length);
+        char **new_args = append_to_array(args, &argc, path);
+        db_launch(argc, new_args);
+    }
+    else
+    {
+        int path_length;
+        char **path = get_new_path(args[1], &path_length);
+        args[1] = get_path_string(path, path_length);
+        db_launch(argc, args);
+    }
+
+    printf("\n");
+    return 1;
 }
 
-int help(char **args)
+int help(int argc, char **args)
 {
     int i;
     printf("Wrapper shell for dbxcli\n");
@@ -474,7 +499,7 @@ int help(char **args)
     return 1;
 }
 
-int sh_exit(char **args)
+int sh_exit(int argc, char **args)
 {
     return 0;
 }
@@ -495,7 +520,7 @@ int execute(int argc, char **args)
     {
         if (strcmp(args[0], builtin_str[i]) == 0)
         {
-            return (*builtin_func[i])(args);
+            return (*builtin_func[i])(argc, args);
         }
     }
 
@@ -544,7 +569,6 @@ void login()
 
 int main(int argc, char **argv)
 {
-    str_resize_cat(&path, "/");
     // Load config files, if any.
     login();
     // Run command loop.
